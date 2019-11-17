@@ -17,6 +17,8 @@ package ea;
 
 
 import java.util.ArrayList;
+import java.util.Arrays;
+
 import teamPursuit.TeamPursuit;
 import teamPursuit.WomensTeamPursuit;
 
@@ -26,10 +28,11 @@ public class EA implements Runnable{
 	public static TeamPursuit teamPursuit = new WomensTeamPursuit(); 
 	
 	private ArrayList<Individual> population = new ArrayList<Individual>();
-	private ArrayList<Individual> subpop1 = new ArrayList<Individual>();
-	private ArrayList<Individual> subpop2 = new ArrayList<Individual>();
-	private ArrayList<Individual> subpop3 = new ArrayList<Individual>();
-	private ArrayList<Individual> subpop4 = new ArrayList<Individual>();
+	private ArrayList<Individual> subpopbest = new ArrayList<Individual>();
+	private ArrayList<Individual> subpopmidddle = new ArrayList<Individual>();
+	private ArrayList<Individual> subpopworst = new ArrayList<Individual>();
+	//initialise the ps arraylist which will input 10 random points from each generation
+	private ArrayList<Individual> ps = new ArrayList<Individual>();
 	private int iteration = 0;
 	
 	public EA() {
@@ -58,47 +61,165 @@ public class EA implements Runnable{
 //		}
 //		Individual best = getBest(population);
 //		best.print();
+
+
+//		initialisePopulation();
+//		System.out.println("finished init pop");
+//		iteration = 0;
+//
+//		while(iteration < Parameters.maxIterations){
+//			iteration++;
+//			bubbleOrganisePop(population);
+//			splitIntoSubPops();
+//			mutateMultiSub();
+//			for (Individual a: population) {
+//				a.evaluate(teamPursuit);
+//			}
+//			printStats();
+//		}
+//		Individual best = getBest(population);
+//		best.print();
+
 		initialisePopulation();
+		for (Individual a:population) {
+			a.initialise_default();
+		}
 		System.out.println("finished init pop");
+		ArrayList<boolean[]> combinations = new ArrayList<boolean[]>();
 		iteration = 0;
 
+		combinations.add(0, new boolean[] {true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true});
+
+		Individual temp2 = population.get(0);
 		while(iteration < Parameters.maxIterations){
+
+			boolean[] temp = {true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true};
+			//while the temp is already a combination
+			// TODO: 17/11/2019 for some reason when the temp is being changed in line 101, that changes the temp stored in the combinations arraylist which then makes it an endless loop
+			while(combinations.contains(temp)){
+				//change a random element of temp
+				int index = Parameters.rnd.nextInt(population.get(iteration).transitionStrategy.length);
+				temp[index] = !temp[index];
+//				System.out.println("yo");
+			}
+
+			//set the current iteration to a new combination and move onto the next one
+			temp2 = population.get(iteration);
+			temp2.transitionStrategy = temp;
+			population.set(iteration, temp2);
+
+			//add temp to the combinations tried
+			combinations.add(combinations.size(), temp);
+
+			//evaluate its time
+			population.get(iteration).evaluate(teamPursuit);
+			//print the best time and other stuff
+			printStats();
 			iteration++;
-			organisePop();
-			splitIntoSubPops();
 		}
 
-		
+		Individual best = getBest(population);
+		best.print();
+
 	}
 
+	//DEO
 	//organise the pop to order by fitness value
-	private void organisePop() {
-		
+	//should be a bubble sort that puts the pops fitness values into ascending order
+	private void bubbleOrganisePop(ArrayList<Individual> aPopulation) {
+		int n = aPopulation.size();
+		for (int i = 0; i < n-1; i++)
+			for (int j = 0; j < n-i-1; j++)
+				if (aPopulation.get(j).getFitness() > aPopulation.get(j+1).getFitness()) {
+					// swap j with j+1
+					Individual temp = aPopulation.get(j);
+					aPopulation.set(j, aPopulation.get(j+1));
+					aPopulation.set(j+1, temp);
+				}
 	}
 
 	private void printStats() {		
 		System.out.println("" + iteration + "\t" + getBest(population) + "\t" + getWorst(population));		
 	}
 
+	//DEO
+	//spit into sub populations to do different things with them
 	private void splitIntoSubPops(){
 		//clear the current subpops
-		subpop1.clear();
-		subpop2.clear();
-		subpop3.clear();
-		subpop4.clear();
+		subpopbest.clear();
+		subpopmidddle.clear();
+		subpopworst.clear();
 		//spilt the population into sub populations
 		for(int i=0; i<population.size(); ++i){
-			if(i<population.size()/4){
-				subpop1.add(population.get(i));
+			if(i<population.size()/3){
+				subpopbest.add(population.get(i));
 			}
-			if(i<population.size()/4*2 && i>= population.size()/4){
-				subpop2.add(population.get(i));
-			}
-			if(i<population.size()/4*3 && i>= population.size()/4*2){
-				subpop3.add(population.get(i));
+			if(i<population.size()/3*2 && i>= population.size()/3){
+				subpopmidddle.add(population.get(i));
 			}
 			else{
-				subpop4.add(population.get(i));
+				subpopworst.add(population.get(i));
+			}
+		}
+	}
+
+	//DEO
+	//Mutate multi-sub mutation strategy
+	private void mutateMultiSub(){
+
+		// choose how many elements to alter
+		int mutationRate = 1 + Parameters.rnd.nextInt(Parameters.mutationRateMax);
+
+		//loop for all in the worst subpop
+		for(int i=0; i< subpopworst.size();++i){
+			//loop for all booleans in each of the worst subpop
+			for(int j=0;j< subpopworst.get(i).transitionStrategy.length;++j){
+				//if the current boolean is equal to the best in the whole population, then change the boolean (exploration)
+				if(subpopworst.get(i).transitionStrategy[j] == getBest(population).transitionStrategy[j]){
+					subpopworst.get(i).transitionStrategy[j] = !subpopworst.get(i).transitionStrategy[j];
+				}
+			}
+		}
+
+		//put 10 random points from this generation into the ps arraylist
+		for(int i =0; i<11; ++i){
+			ps.add(population.get(Parameters.rnd.nextInt(population.size())));
+		}
+
+		//loop for all in middle subpop
+		for(int i=0; i< subpopmidddle.size();++i){
+			//choose a random number of components to be changed in the current Individual
+			for(int j = 0; j < mutationRate; ++j){
+				//get a random boolean
+				int index = Parameters.rnd.nextInt(subpopmidddle.get(i).transitionStrategy.length);
+				//if the random boolean is not equal to the best in the ps arraylist then change it to match the best (exploitation).
+				if(subpopmidddle.get(i).transitionStrategy[index] != getBest(ps).transitionStrategy[index]) {
+					subpopmidddle.get(i).transitionStrategy[index] = !subpopmidddle.get(i).transitionStrategy[index];
+				}
+			}
+			//then randomly change some components of the same individual (exploration)
+			for(int j=0; j< mutationRate; ++j){
+				//get a random boolean
+				int index = Parameters.rnd.nextInt(subpopmidddle.get(i).transitionStrategy.length);
+				//swap that random boolean
+				subpopmidddle.get(i).transitionStrategy[index] = !subpopmidddle.get(i).transitionStrategy[index];
+			}
+		}
+
+		//loop for all in the best subpop
+		for(int i=0; i< subpopbest.size();++i){
+			//get the best in the population and compare to each in the best sub pop with some random changes (exploitation)
+			//copy current for comparison
+			Individual temp = subpopbest.get(i);
+			for(int j = 0; j < mutationRate; ++j){
+				//get a random boolean
+				int index = Parameters.rnd.nextInt(temp.transitionStrategy.length);
+				//swap that random boolean
+				temp.transitionStrategy[index] = !temp.transitionStrategy[index];
+			}
+			//compare and replace if better fitness than itself
+			if(temp.getFitness() < subpopbest.get(i).getFitness()){
+				subpopbest.set(i, temp);
 			}
 		}
 	}
@@ -128,8 +249,6 @@ public class EA implements Runnable{
 				int index = Parameters.rnd.nextInt(child.transitionStrategy.length);
 				child.transitionStrategy[index] = !child.transitionStrategy[index];
 			}
-			
-		
 		
 		return child;
 	}

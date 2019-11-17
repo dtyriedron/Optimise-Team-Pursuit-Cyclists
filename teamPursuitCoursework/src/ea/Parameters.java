@@ -14,7 +14,7 @@ public class Parameters {
 	public static final int [] DEFAULT_WOMENS_PACING_STRATEGY = {300, 300, 300, 300, 300, 300, 300, 350, 350, 300, 300, 350, 350, 350, 350, 300, 300, 350, 350, 350, 350, 300, 300};
 	
 	
-	public static int popSize = 20;
+	public static int popSize = 1000;
 	public static int tournamentSize = 2;
 	
 	public static int mutationRateMax = 6;//out of len

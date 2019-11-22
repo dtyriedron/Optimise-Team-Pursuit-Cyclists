@@ -1,5 +1,6 @@
 package ea;
 
+import java.math.BigDecimal;
 import java.util.Random;
 
 public class Parameters {
@@ -14,7 +15,7 @@ public class Parameters {
 	public static final int [] DEFAULT_WOMENS_PACING_STRATEGY = {300, 300, 300, 300, 300, 300, 300, 350, 350, 300, 300, 350, 350, 350, 350, 300, 300, 350, 350, 350, 350, 300, 300};
 	
 	
-	public static int popSize = 1000;
+	public static BigDecimal popSize = new BigDecimal(Math.pow(2,DEFAULT_WOMENS_TRANSITION_STRATEGY.length));;
 	public static int tournamentSize = 2;
 	
 	public static int mutationRateMax = 6;//out of len

@@ -16,6 +16,8 @@ package ea;
  */
 
 
+import java.math.BigDecimal;
+import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.Arrays;
 
@@ -33,11 +35,20 @@ public class EA implements Runnable{
 	private ArrayList<Individual> subpopworst = new ArrayList<Individual>();
 	//initialise the ps arraylist which will input 10 random points from each generation
 	private ArrayList<Individual> ps = new ArrayList<Individual>();
+	//combinations
+    private final int n =22;
+    private BigInteger bi = BigInteger.ZERO;
+    private BigDecimal rows = new BigDecimal(Math.pow(2,n));
+    private int k=0;
+    private boolean[][] bigBoolArray = new boolean[rows.intValue()][n];
+
+
 	private int iteration = 0;
 	
 	public EA() {
 		
 	}
+
 
 	
 	public static void main(String[] args) {
@@ -66,7 +77,7 @@ public class EA implements Runnable{
 //		initialisePopulation();
 //		System.out.println("finished init pop");
 //		iteration = 0;
-//
+
 //		while(iteration < Parameters.maxIterations){
 //			iteration++;
 //			bubbleOrganisePop(population);
@@ -80,44 +91,17 @@ public class EA implements Runnable{
 //		Individual best = getBest(population);
 //		best.print();
 
-		initialisePopulation();
-		for (Individual a:population) {
-			a.initialise_default();
-		}
-		System.out.println("finished init pop");
-		ArrayList<boolean[]> combinations = new ArrayList<boolean[]>();
-		iteration = 0;
-
-		combinations.add(0, new boolean[] {true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true});
-
-		Individual temp2 = population.get(0);
-		while(iteration < Parameters.maxIterations){
-
-			boolean[] temp = {true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true};
-			//while the temp is already a combination
-			// TODO: 17/11/2019 for some reason when the temp is being changed in line 101, that changes the temp stored in the combinations arraylist which then makes it an endless loop
-			while(combinations.contains(temp)){
-				//change a random element of temp
-				int index = Parameters.rnd.nextInt(population.get(iteration).transitionStrategy.length);
-				temp[index] = !temp[index];
-//				System.out.println("yo");
-			}
-
-			//set the current iteration to a new combination and move onto the next one
-			temp2 = population.get(iteration);
-			temp2.transitionStrategy = temp;
-			population.set(iteration, temp2);
-
-			//add temp to the combinations tried
-			combinations.add(combinations.size(), temp);
-
-			//evaluate its time
-			population.get(iteration).evaluate(teamPursuit);
-			//print the best time and other stuff
-			printStats();
-			iteration++;
-		}
-
+        initialisePopulation();
+        System.out.println("finished init pop");
+        //calc all the different permutations of populations transition strategy
+        calcPermutations();
+        //for each individual in the population, change the transition strategy to a permutation
+        for(int i=0;i<population.size();i++){
+            population.get(i).transitionStrategy = bigBoolArray[i];
+            population.get(i).evaluate(teamPursuit);
+            printStats();
+            iteration++;
+        }
 		Individual best = getBest(population);
 		best.print();
 
@@ -140,6 +124,25 @@ public class EA implements Runnable{
 
 	private void printStats() {		
 		System.out.println("" + iteration + "\t" + getBest(population) + "\t" + getWorst(population));		
+	}
+
+	private void calcPermutations(){
+        while(bi.compareTo(rows.toBigInteger())<0){
+            String bin = bi.toString(2);
+            while(bin.length()<n){
+                bin = "0" + bin;
+            }
+            char[] chars = bin.toCharArray();
+            boolean[] boolArray = new boolean[n];
+            for(int j=0;j<chars.length;j++){
+                boolArray[j] = chars[j] == '0' ? true:false;
+            }
+            //System.out.println(Arrays.toString(boolArray));
+            bigBoolArray[k] = boolArray;
+            k++;
+            bi = bi.add(BigInteger.ONE);
+        }
+        //System.out.print(bigBoolArray.length + " k = " + k);
 	}
 
 	//DEO
@@ -322,9 +325,9 @@ public class EA implements Runnable{
 	}
 
 	private void initialisePopulation() {
-		while(population.size() < Parameters.popSize){
+		while(population.size() < Parameters.popSize.intValue()){
 			Individual individual = new Individual();
-			individual.initialise();			
+			individual.initialise_default();
 			individual.evaluate(teamPursuit);
 			population.add(individual);
 							

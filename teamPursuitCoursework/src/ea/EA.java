@@ -77,54 +77,322 @@ public class EA implements Runnable{
 //		initialisePopulation();
 //		System.out.println("finished init pop");
 //		iteration = 0;
-
+//
 //		while(iteration < Parameters.maxIterations){
 //			iteration++;
 //			bubbleOrganisePop(population);
 //			splitIntoSubPops();
 //			mutateMultiSub();
-//			for (Individual a: population) {
-//				a.evaluate(teamPursuit);
-//			}
+//			getBest(population).evaluate(teamPursuit);
 //			printStats();
 //		}
+//
 //		Individual best = getBest(population);
 //		best.print();
 
-        initialisePopulation();
-        System.out.println("finished init pop");
-        //calc all the different permutations of populations transition strategy
-        calcPermutations();
-        //for each individual in the population, change the transition strategy to a permutation
-        for(int i=0;i<population.size();i++){
-            population.get(i).transitionStrategy = bigBoolArray[i];
-            population.get(i).evaluate(teamPursuit);
-            printStats();
-            iteration++;
-        }
-		Individual best = getBest(population);
-		best.print();
+		// TODO: 22/11/2019 new islands strat maybe? 
+		// TODO: 22/11/2019 could look back at a certain number of iterations if there is no change after a certain number of iterations maybe change the strat
+		hill_climber();
+		//multiple_hills_climber();
+		//SA();
+		//tabu();
+		//basicEA();
+		//societyEA();
 
-	}
 
-	//DEO
-	//organise the pop to order by fitness value
-	//should be a bubble sort that puts the pops fitness values into ascending order
-	private void bubbleOrganisePop(ArrayList<Individual> aPopulation) {
-		int n = aPopulation.size();
-		for (int i = 0; i < n-1; i++)
-			for (int j = 0; j < n-i-1; j++)
-				if (aPopulation.get(j).getFitness() > aPopulation.get(j+1).getFitness()) {
-					// swap j with j+1
-					Individual temp = aPopulation.get(j);
-					aPopulation.set(j, aPopulation.get(j+1));
-					aPopulation.set(j+1, temp);
-				}
+//        initialisePopulation();
+//        System.out.println("finished init pop");
+//        //calc all the different permutations of populations transition strategy
+//        calcPermutations();
+//        //for each individual in the population, change the transition strategy to a permutation
+//        for(int i=0;i<population.size();i++){
+//            population.get(i).transitionStrategy = bigBoolArray[i];
+//            population.get(i).evaluate(teamPursuit);
+//            printStats();
+//            iteration++;
+//        }
+//		Individual best = getBest(population);
+//		best.print();
+
 	}
 
 	private void printStats() {		
 		System.out.println("" + iteration + "\t" + getBest(population) + "\t" + getWorst(population));		
 	}
+
+	//iterated hill climber
+	private void hill_climber(){
+		initialisePopulation();
+		System.out.println("finished init pop");
+		iteration = 0;
+		for(Individual a : population){
+			a.evaluate(teamPursuit);
+		}
+
+		while(iteration < Parameters.maxIterations) {
+			iteration++;
+
+			int randomPos = Parameters.rnd.nextInt(population.size());
+			Individual x = population.get(randomPos);
+			int hill_climb_rate = 2;
+
+			//Evaluate x
+			x.evaluate(teamPursuit);
+
+			Individual y = x.copy();
+			//move two random positions
+//			for (int i = 0; i < hill_climb_rate; i++) {
+//				int index = Parameters.rnd.nextInt(y.transitionStrategy.length);
+//				y.transitionStrategy[index] = !y.transitionStrategy[index];
+//			}
+			for (int i = 0; i < hill_climb_rate; i++) {
+				int index = Parameters.rnd.nextInt(y.pacingStrategy.length);
+				int randomnum = Parameters.rnd.nextInt(1000) + 200;
+//				//try and get the random number to be closer to the middle
+//				if(randomnum < 600){
+//					randomnum = randomnum+ Parameters.rnd.nextInt(300) + 100;
+//				}
+//				else{
+//					randomnum = randomnum - Parameters.rnd.nextInt(300) - 100;
+//				}
+				y.pacingStrategy[index] = randomnum;
+			}
+
+
+			//evaulate y
+			y.evaluate(teamPursuit);
+
+			if (y.getFitness() < x.getFitness()) {
+				//replace y in random pos if its better than x
+				population.set(randomPos, y);
+			}
+			else{
+				replace(x);
+			}
+			printStats();
+		}
+		Individual best = getBest(population);
+		best.print();
+	}
+
+	//iterated multiple hills climber
+	// TODO: 23/11/2019 seems to change the best in the popluation and make it worse sometimes
+	void multiple_hills_climber(){
+		initialisePopulation();
+		System.out.println("finished init pop");
+		iteration = 0;
+		for(Individual a : population){
+			a.evaluate(teamPursuit);
+		}
+
+		while(iteration < Parameters.maxIterations) {
+			iteration++;
+
+			int randomPos = Parameters.rnd.nextInt(population.size());
+			Individual x = population.get(randomPos);
+			ArrayList<Individual> hills = new ArrayList<Individual>();
+
+			int hill_climb_rate = 2;
+			int num_of_hills = 3;
+
+			//copy x
+			Individual y = x.copy();
+
+			//add copies of x and store them in the list
+			for (int i =0; i< num_of_hills;i++) {
+				hills.add(y);
+			}
+
+			//move two random positions for every hill in hills
+			for (Individual a: hills) {
+				for (int i = 0; i < hill_climb_rate; i++) {
+					int index = Parameters.rnd.nextInt(a.transitionStrategy.length);
+					a.transitionStrategy[index] = !a.transitionStrategy[index];
+				}
+			}
+
+			//Evaluate hills after changes made
+			for (Individual a : hills) {
+				a.evaluate(teamPursuit);
+			}
+
+			//find the best fitness from the hills list and replace x
+			if (getBest(hills).getFitness() < x.getFitness()) {
+				//replace y in random pos if its better than x
+				population.set(randomPos, getBest(hills));
+			}
+			else{
+				replace(x);
+			}
+			printStats();
+		}
+		Individual best = getBest(population);
+		best.print();
+	}
+
+	//Simulated Annealing
+	void SA(){
+		initialisePopulation();
+		System.out.println("finished init pop");
+		iteration = 0;
+		for(Individual a : population){
+			a.evaluate(teamPursuit);
+		}
+		int randomPos = Parameters.rnd.nextInt(population.size());
+		Individual x = population.get(randomPos);
+		double probability = 1.0;
+
+		x.evaluate(teamPursuit);
+
+		Individual y = x.copy();
+
+		int move = 2;
+
+		while(iteration < Parameters.maxIterations) {
+			iteration++;
+
+			for (int i = 0; i < move; i++) {
+				int index = Parameters.rnd.nextInt(y.transitionStrategy.length);
+				y.transitionStrategy[index] = !y.transitionStrategy[index];
+			}
+
+			y.evaluate(teamPursuit);
+
+			if(y.getFitness() < x.getFitness()){
+				x = y.copy();
+				population.set(randomPos, y);
+			}
+			else if(probability > 0.0){
+				x = y.copy();
+				population.set(randomPos,y);
+				probability = probability-0.1;
+			}
+			else{
+				replace(x);
+			}
+
+			printStats();
+		}
+		Individual best = getBest(population);
+		best.print();
+
+	}
+
+	//tabu search
+	void tabu(){
+		initialisePopulation();
+		System.out.println("finished init pop");
+		iteration = 0;
+		for(Individual a : population){
+			a.evaluate(teamPursuit);
+		}
+
+		ArrayList<Individual> randoms = new ArrayList<Individual>();
+		for (int i =0; i< 4;i++) {
+			randoms.add(population.get(Parameters.rnd.nextInt(population.size())));
+		}
+		getBest(randoms);
+
+		ArrayList<Individual> lastrandoms = new ArrayList<Individual>();
+
+
+		while(iteration < Parameters.maxIterations) {
+			iteration++;
+
+			//copy the last set of elements
+			lastrandoms = (ArrayList<Individual>) randoms.clone();
+
+			//change one element for each in the list
+			for (Individual a: randoms) {
+				int index = Parameters.rnd.nextInt(a.transitionStrategy.length);
+				a.transitionStrategy[index] = !a.transitionStrategy[index];
+			}
+
+			for (Individual a: randoms) {
+				a.evaluate(teamPursuit);
+			}
+
+			//check if move hasnt been made in the last 4 iterations
+			for (int i = 0; i<randoms.size();i++) {
+				//if the move improves fitness then move
+				if(randoms.get(i).getFitness() < lastrandoms.get(i).getFitness()){
+					population.add(randoms.get(i));
+				}
+				else{
+					replace(randoms.get(i));
+				}
+			}
+
+			printStats();
+		}
+
+		Individual best = getBest(population);
+		best.print();
+	}
+
+	//basic EA
+	void basicEA(){
+		initialisePopulation();
+		System.out.println("finished init pop");
+		iteration = 0;
+		for(Individual a : population){
+			a.evaluate(teamPursuit);
+		}
+
+		while(iteration < Parameters.maxIterations) {
+			iteration++;
+			Individual par1 = tournamentSelection();
+			Individual par2 = tournamentSelection();
+			Individual child = crossover(par1, par2);
+			child = mutate(child);
+			child.evaluate(teamPursuit);
+			replace(child);
+
+			printStats();
+		}
+		Individual best = getBest(population);
+		best.print();
+	}
+
+	//society EA
+	void societyEA(){
+		initialisePopulation();
+		System.out.println("finished init pop");
+		iteration = 0;
+		for(Individual a : population){
+			a.evaluate(teamPursuit);
+		}
+
+		while(iteration < Parameters.maxIterations) {
+			iteration++;
+
+			//create a society-select the best 16 in the population
+			ArrayList<Individual> society = new ArrayList<Individual>();
+
+			bubbleOrganisePop(population);
+			for(int i=0;i<population.size();i++){
+				if(i<population.size()/4*3+1){
+					society.add(population.get(i));
+				}
+			}
+			//crossover half of society with the other half
+			for(int i = 0; i< society.size()/2;i++) {
+				int rand1 = Parameters.rnd.nextInt(society.size());
+				int rand2 = Parameters.rnd.nextInt(society.size());
+				Individual par1 = society.get(rand1);
+				Individual par2 = society.get(rand2);
+				Individual child = crossover(par1, par2);
+				child = mutate(child);
+				child.evaluate(teamPursuit);
+				replace(child);
+			}
+
+			printStats();
+		}
+		Individual best = getBest(population);
+		best.print();
+	}
+
 
 	private void calcPermutations(){
         while(bi.compareTo(rows.toBigInteger())<0){
@@ -143,6 +411,23 @@ public class EA implements Runnable{
             bi = bi.add(BigInteger.ONE);
         }
         //System.out.print(bigBoolArray.length + " k = " + k);
+	}
+
+
+	//DEO
+	//organise the pop to order by fitness value
+	//should be a bubble sort that puts the pops fitness values into ascending order
+	private void bubbleOrganisePop(ArrayList<Individual> aPopulation) {
+		int n = aPopulation.size();
+		for (int i = 0; i < n-1; i++)
+			for (int j = 0; j < n-i-1; j++){
+				if (aPopulation.get(j).getFitness() > aPopulation.get(j+1).getFitness()) {
+					// swap j with j+1
+					Individual temp = aPopulation.get(j);
+					aPopulation.set(j, aPopulation.get(j+1));
+					aPopulation.set(j+1, temp);
+				}
+			}
 	}
 
 	//DEO
@@ -325,12 +610,11 @@ public class EA implements Runnable{
 	}
 
 	private void initialisePopulation() {
-		while(population.size() < Parameters.popSize.intValue()){
+		while(population.size() < Parameters.popSize){
 			Individual individual = new Individual();
 			individual.initialise_default();
 			individual.evaluate(teamPursuit);
 			population.add(individual);
-							
 		}		
 	}	
 }

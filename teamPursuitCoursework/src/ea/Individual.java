@@ -20,7 +20,7 @@ public class Individual {
 	
 	public void initialise(){
 		for(int i = 0; i < transitionStrategy.length; i++){
-			transitionStrategy[i] = Parameters.rnd.nextBoolean();
+			transitionStrategy[i] = Parameters.DEFAULT_WOMENS_TRANSITION_STRATEGY[i];
 		}
 		
 		for(int i = 0; i < pacingStrategy.length; i++){

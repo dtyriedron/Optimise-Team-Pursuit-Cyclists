@@ -15,8 +15,9 @@ public class Parameters {
 	public static final int [] DEFAULT_WOMENS_PACING_STRATEGY = {300, 300, 300, 300, 300, 300, 300, 350, 350, 300, 300, 350, 350, 350, 350, 300, 300, 350, 350, 350, 350, 300, 300};
 	
 	
-	public static BigDecimal popSize = new BigDecimal(Math.pow(2,DEFAULT_WOMENS_TRANSITION_STRATEGY.length));;
-	public static int tournamentSize = 2;
+	//public static BigDecimal popSize = new BigDecimal(Math.pow(2,DEFAULT_WOMENS_TRANSITION_STRATEGY.length));
+	public static int popSize = 20;
+	public static int tournamentSize = 5;
 	
 	public static int mutationRateMax = 6;//out of len
 	public static double mutationProbability = 0.5;

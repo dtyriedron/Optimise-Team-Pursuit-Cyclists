@@ -25,7 +25,6 @@ import teamPursuit.TeamPursuit;
 import teamPursuit.WomensTeamPursuit;
 
 public class EA implements Runnable{
-	
 	// create a new team with the default settings
 	public static TeamPursuit teamPursuit = new WomensTeamPursuit(); 
 	
@@ -92,12 +91,12 @@ public class EA implements Runnable{
 
 		// TODO: 22/11/2019 new islands strat maybe? 
 		// TODO: 22/11/2019 could look back at a certain number of iterations if there is no change after a certain number of iterations maybe change the strat
-		hill_climber();
+		//hill_climber();
 		//multiple_hills_climber();
 		//SA();
 		//tabu();
 		//basicEA();
-		//societyEA();
+		societyEA();
 
 
 //        initialisePopulation();
@@ -125,26 +124,48 @@ public class EA implements Runnable{
 		initialisePopulation();
 		System.out.println("finished init pop");
 		iteration = 0;
-		for(Individual a : population){
-			a.evaluate(teamPursuit);
-		}
+		double bestFitness = 0.0;
+		int localCounter = 0;
+		int hill_climb_rate = 2;
+		Individual y;
 
-		while(iteration < Parameters.maxIterations) {
+		while(iteration < Parameters.maxIterations || localCounter == 800) {
 			iteration++;
 
 			int randomPos = Parameters.rnd.nextInt(population.size());
 			Individual x = population.get(randomPos);
-			int hill_climb_rate = 2;
-
 			//Evaluate x
 			x.evaluate(teamPursuit);
 
-			Individual y = x.copy();
+			y = x.copy();
+
+			if(bestFitness == getBest(population).getFitness()){
+				//increase local optima counter
+				localCounter++;
+			}
+			else{
+				localCounter = 0;
+			}
+//			bestFitness = getBest(population).getFitness();
+//			if(localCounter >99){
+//				System.out.println("Theres too many of them!");
+//				for (int i = 0; i < hill_climb_rate; i++) {
+//					int index = Parameters.rnd.nextInt(y.transitionStrategy.length);
+//					y.transitionStrategy[index] = !y.transitionStrategy[index];
+//				}
+//			}
+
+
 			//move two random positions
 //			for (int i = 0; i < hill_climb_rate; i++) {
 //				int index = Parameters.rnd.nextInt(y.transitionStrategy.length);
 //				y.transitionStrategy[index] = !y.transitionStrategy[index];
 //			}
+			for (int i = 0; i < hill_climb_rate; i++) {
+				int index = Parameters.rnd.nextInt(y.transitionStrategy.length);
+				y.transitionStrategy[index] = !y.transitionStrategy[index];
+			}
+
 			for (int i = 0; i < hill_climb_rate; i++) {
 				int index = Parameters.rnd.nextInt(y.pacingStrategy.length);
 				int randomnum = Parameters.rnd.nextInt(1000) + 200;
@@ -166,9 +187,20 @@ public class EA implements Runnable{
 				//replace y in random pos if its better than x
 				population.set(randomPos, y);
 			}
-			else{
-				replace(x);
-			}
+			//for every 100 iterations
+//			if(iteration % 100 == 0){
+//				//if the saved best is not equal to the current best or has not been saved yet (in first 100 iterations) then
+//				if(bestFitness != getBest(population).getFitness() || iteration==100){
+//					//save the current best
+//					bestFitness = getBest(population).getFitness();
+//				}
+//				//if the saved best is equal to the current best and the iteration is a multiple of 100
+//				else {
+//					//mutate
+//				}
+//
+//			}
+
 			printStats();
 		}
 		Individual best = getBest(population);
@@ -335,9 +367,6 @@ public class EA implements Runnable{
 		initialisePopulation();
 		System.out.println("finished init pop");
 		iteration = 0;
-		for(Individual a : population){
-			a.evaluate(teamPursuit);
-		}
 
 		while(iteration < Parameters.maxIterations) {
 			iteration++;
@@ -359,24 +388,33 @@ public class EA implements Runnable{
 		initialisePopulation();
 		System.out.println("finished init pop");
 		iteration = 0;
-		for(Individual a : population){
-			a.evaluate(teamPursuit);
-		}
+		double bestFitness = 0.0;
+		int localCounter = 0;
 
-		while(iteration < Parameters.maxIterations) {
+
+
+		while(iteration < Parameters.maxIterations || localCounter == 800) {
 			iteration++;
+
+			if(bestFitness == getBest(population).getFitness()){
+				//increase local optima counter
+				localCounter++;
+			}
+			else{
+				localCounter = 0;
+			}
+
 
 			//create a society-select the best 16 in the population
 			ArrayList<Individual> society = new ArrayList<Individual>();
 
 			bubbleOrganisePop(population);
-			for(int i=0;i<population.size();i++){
-				if(i<population.size()/4*3+1){
-					society.add(population.get(i));
-				}
+			//add members of society to society
+			for(int i=0;i<population.size()/4*3+1;i++){
+				society.add(population.get(i));
 			}
 			//crossover half of society with the other half
-			for(int i = 0; i< society.size()/2;i++) {
+			for(int i = 0; i< society.size();i++) {
 				int rand1 = Parameters.rnd.nextInt(society.size());
 				int rand2 = Parameters.rnd.nextInt(society.size());
 				Individual par1 = society.get(rand1);
@@ -386,6 +424,7 @@ public class EA implements Runnable{
 				child.evaluate(teamPursuit);
 				replace(child);
 			}
+
 
 			printStats();
 		}
@@ -536,6 +575,9 @@ public class EA implements Runnable{
 			for(int i = 0; i < mutationRate; i++){
 				int index = Parameters.rnd.nextInt(child.transitionStrategy.length);
 				child.transitionStrategy[index] = !child.transitionStrategy[index];
+				//change the pacing strat
+				int index2 = Parameters.rnd.nextInt(child.pacingStrategy.length);
+				child.pacingStrategy[index2] = Parameters.rnd.nextInt(1000)+200;
 			}
 		
 		return child;
@@ -612,7 +654,7 @@ public class EA implements Runnable{
 	private void initialisePopulation() {
 		while(population.size() < Parameters.popSize){
 			Individual individual = new Individual();
-			individual.initialise_default();
+			individual.initialise();
 			individual.evaluate(teamPursuit);
 			population.add(individual);
 		}		

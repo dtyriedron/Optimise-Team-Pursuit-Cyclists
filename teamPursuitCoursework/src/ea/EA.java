@@ -32,6 +32,7 @@ public class EA implements Runnable{
 	private ArrayList<Individual> subpopbest = new ArrayList<Individual>();
 	private ArrayList<Individual> subpopmidddle = new ArrayList<Individual>();
 	private ArrayList<Individual> subpopworst = new ArrayList<Individual>();
+    private ArrayList<Individual> nearlys = new ArrayList<Individual>();
 	//initialise the ps arraylist which will input 10 random points from each generation
 	private ArrayList<Individual> ps = new ArrayList<Individual>();
 	//combinations
@@ -373,7 +374,7 @@ public class EA implements Runnable{
 			Individual par1 = tournamentSelection();
 			Individual par2 = tournamentSelection();
 			Individual child = crossover(par1, par2);
-			child = mutate(child);
+			child = mutate(child, Parameters.mutationRateMax + 1, false);
 			child.evaluate(teamPursuit);
 			replace(child);
 
@@ -388,29 +389,20 @@ public class EA implements Runnable{
 		initialisePopulation();
 		System.out.println("finished init pop");
 		iteration = 0;
-		double bestFitness = 0.0;
-		int localCounter = 0;
+		long t = System.currentTimeMillis();
+		long end= t + 300000;
+		
+		while(System.currentTimeMillis() < end) {
+            iteration++;
 
+			improveNearlys();
 
-
-		while(iteration < Parameters.maxIterations || localCounter == 800) {
-			iteration++;
-
-			if(bestFitness == getBest(population).getFitness()){
-				//increase local optima counter
-				localCounter++;
-			}
-			else{
-				localCounter = 0;
-			}
-
-
-			//create a society-select the best 16 in the population
+			//create a society-select the top 3/4 of the population
 			ArrayList<Individual> society = new ArrayList<Individual>();
 
 			bubbleOrganisePop(population);
 			//add members of society to society
-			for(int i=0;i<population.size()/4*3+1;i++){
+			for(int i=0;i<population.size()/4*3;i++){
 				society.add(population.get(i));
 			}
 			//crossover half of society with the other half
@@ -420,17 +412,48 @@ public class EA implements Runnable{
 				Individual par1 = society.get(rand1);
 				Individual par2 = society.get(rand2);
 				Individual child = crossover(par1, par2);
-				child = mutate(child);
+				child = mutate(child, 2, false);
 				child.evaluate(teamPursuit);
 				replace(child);
+
+//				//if there is no diversity
+//                if(getBest(population).getFitness() == getWorst(population).getFitness()){
+//                    for(int k = population.size()/4*3+1; k<population.size();k++){
+//                        population.set(k,mutate(population.get(k), 10, false));
+//                        population.get(k).evaluate(teamPursuit);
+//                    }
+////                    System.out.println("re-initialised worst people");
+//                }
+//                else{
+//                    for(int k = population.size()/4*3; k<population.size();k++){
+//                        population.set(k,mutate(population.get(k), 10, false));
+//                    }
+//                }
+
 			}
-
-
+            //System.out.println("population size: " + population.size());
 			printStats();
 		}
 		Individual best = getBest(population);
 		best.print();
 	}
+
+
+
+	private void improveNearlys(){
+        for (Individual a: nearlys) {
+            if(a.getFitness() < 0.7 && a.getFitness() >= 0.6){
+                mutate(a, 16, true);
+            }
+            else if(a.getFitness() < 0.8 && a.getFitness() >= 0.7){
+                mutate(a, 8, true);
+            }
+            else{
+                mutate(a, 4, true);
+            }
+              a.evaluate(teamPursuit);
+        }
+    }
 
 
 	private void calcPermutations(){
@@ -558,27 +581,49 @@ public class EA implements Runnable{
 			int idx = population.indexOf(worst);
 			population.set(idx, child);
 		}
+		else if(child.getFitness() == worst.getFitness()){
+            for(int k = population.size()/4*3+1; k<population.size();k++){
+                population.set(k,mutate(population.get(k), 10, false));
+                population.get(k).evaluate(teamPursuit);
+            }
+           // System.out.println("re-initialised worst people");
+        }
 	}
 
 
-	private Individual mutate(Individual child) {
-		if(Parameters.rnd.nextDouble() > Parameters.mutationProbability){
-			return child;
-		}
-		
-		// choose how many elements to alter
-		int mutationRate = 1 + Parameters.rnd.nextInt(Parameters.mutationRateMax);
-		
-		// mutate the transition strategy
+	private Individual mutate(Individual child, int mutationRate, boolean reduceEnergy) {
+//		if(Parameters.rnd.nextDouble() > Parameters.mutationProbability){
+//			return child;
+//		}
 
-			//mutate the transition strategy by flipping boolean value
-			for(int i = 0; i < mutationRate; i++){
-				int index = Parameters.rnd.nextInt(child.transitionStrategy.length);
-				child.transitionStrategy[index] = !child.transitionStrategy[index];
-				//change the pacing strat
-				int index2 = Parameters.rnd.nextInt(child.pacingStrategy.length);
-				child.pacingStrategy[index2] = Parameters.rnd.nextInt(1000)+200;
-			}
+		//mutate the transition strategy by flipping boolean value
+        if(reduceEnergy){
+            for(int i = 0; i < mutationRate; i++){
+                int index = Parameters.rnd.nextInt(child.transitionStrategy.length);
+                child.transitionStrategy[index] = !child.transitionStrategy[index];
+                //change the pacing strat
+                int index2 = Parameters.rnd.nextInt(child.pacingStrategy.length);
+                int rand = Parameters.rnd.nextInt(200);
+                while(child.pacingStrategy[index2] - rand < 400){
+                    index2 = Parameters.rnd.nextInt((child.pacingStrategy.length));
+                }
+                child.pacingStrategy[index2] = child.pacingStrategy[index2] - rand;
+            }
+        }
+        else{
+            for(int i = 0; i < mutationRate; i++){
+                int index = Parameters.rnd.nextInt(child.transitionStrategy.length);
+                child.transitionStrategy[index] = !child.transitionStrategy[index];
+                //change the pacing strat
+                int index2 = Parameters.rnd.nextInt(child.pacingStrategy.length);
+                int rand = Parameters.rnd.nextInt(200);
+                while(child.pacingStrategy[index2] + rand >= 1000){
+                    index2 = Parameters.rnd.nextInt((child.pacingStrategy.length));
+                }
+                child.pacingStrategy[index2] = child.pacingStrategy[index2] + rand;
+            }
+        }
+
 		
 		return child;
 	}

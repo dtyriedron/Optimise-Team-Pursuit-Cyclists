@@ -17,7 +17,7 @@ public class Parameters {
 
 	
 	//public static BigDecimal popSize = new BigDecimal(Math.pow(2,DEFAULT_WOMENS_TRANSITION_STRATEGY.length));
-	public static int popSize = 5;
+	public static int popSize = 4;
 	public static int tournamentSize = 5;
 	
 	public static int mutationRateMax = 6;//out of len
